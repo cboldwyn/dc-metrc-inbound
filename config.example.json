@@ -1,0 +1,12 @@
+{
+  "metrc": {
+    "api_key": "your-metrc-user-api-key-here",
+    "base_url": "https://api-ca.metrc.com",
+    "license_number": "your-facility-license-number"
+  },
+  "asana": {
+    "personal_access_token": "your-asana-pat-here",
+    "workspace_id": "your-workspace-id",
+    "project_id": "your-project-id"
+  }
+}
