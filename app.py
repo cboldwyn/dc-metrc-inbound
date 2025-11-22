@@ -43,8 +43,8 @@ def get_incoming_transfers(days_back=7):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_back)
     
-    # Try v1 first (California may not have v2 enabled yet)
-    url = f"{METRC_BASE_URL}/transfers/v1/incoming"
+    # Use v2 endpoint (California has v2 per documentation)
+    url = f"{METRC_BASE_URL}/transfers/v2/incoming"
     headers = {
         "Content-Type": "application/json"
     }
@@ -55,14 +55,20 @@ def get_incoming_transfers(days_back=7):
         "lastModifiedEnd": end_date.strftime("%Y-%m-%dT%H:%M:%S")
     }
     
+    # Debug logging
+    print(f"  URL: {url}")
+    print(f"  License: {METRC_LICENSE}")
+    print(f"  Date Range: {params['lastModifiedStart']} to {params['lastModifiedEnd']}")
+    print(f"  Full URL with params: {url}?licenseNumber={METRC_LICENSE}&lastModifiedStart={params['lastModifiedStart']}&lastModifiedEnd={params['lastModifiedEnd']}")
+    
     try:
         response = requests.get(url, headers=headers, auth=auth, params=params, timeout=30)
         
-        # If v1 gives 404, try v2
-        if response.status_code == 404:
-            print(f"  v1 endpoint not found, trying v2...")
-            url = f"{METRC_BASE_URL}/transfers/v2/incoming"
-            response = requests.get(url, headers=headers, auth=auth, params=params, timeout=30)
+        print(f"  Response Status: {response.status_code}")
+        print(f"  Response Headers: {dict(response.headers)}")
+        
+        if response.status_code != 200:
+            print(f"  Response Body: {response.text}")
         
         response.raise_for_status()
         transfers = response.json()
@@ -70,6 +76,9 @@ def get_incoming_transfers(days_back=7):
         return transfers
     except requests.exceptions.RequestException as e:
         print(f"  ✗ Error fetching transfers: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"  Response status: {e.response.status_code}")
+            print(f"  Response body: {e.response.text}")
         return []
 
 
