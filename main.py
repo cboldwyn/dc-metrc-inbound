@@ -74,8 +74,18 @@ def get_incoming_transfers(hours_back=2):
             print(f"  Response Body: {response.text}")
         
         response.raise_for_status()
-        transfers = response.json()
-        print(f"  ✓ Found {len(transfers)} incoming transfers")
+        response_data = response.json()
+        
+        # METRC v2 returns paginated response with Data field
+        if isinstance(response_data, dict) and 'Data' in response_data:
+            transfers = response_data['Data']
+            total_records = response_data.get('TotalRecords', len(transfers))
+            print(f"  ✓ Found {len(transfers)} incoming transfers (Total: {total_records})")
+        else:
+            # Fallback for non-paginated response
+            transfers = response_data if isinstance(response_data, list) else []
+            print(f"  ✓ Found {len(transfers)} incoming transfers")
+        
         return transfers
     except requests.exceptions.RequestException as e:
         print(f"  ✗ Error fetching transfers: {e}")
@@ -312,8 +322,8 @@ def main():
     
     print(f"\n📊 Currently tracking {len(processed_ids)} processed transfers")
     
-    # Get incoming transfers
-    transfers = get_incoming_transfers(days_back=7)
+    # Get incoming transfers (last 2 hours - METRC's 24-hour limit)
+    transfers = get_incoming_transfers(hours_back=2)
     
     if not transfers:
         print("\n✓ No new transfers found")
