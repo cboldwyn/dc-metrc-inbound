@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # Configuration - reads from environment variables if available, otherwise uses defaults
-METRC_API_KEY = os.getenv("METRC_API_KEY", "r94vrDWi2CVsT2qYERqGHHc2oMjb5rC5XsgvunC8tE7fUADa")
+# METRC requires TWO API keys for authentication:
+METRC_INTEGRATOR_KEY = os.getenv("METRC_INTEGRATOR_KEY", "10JqOc5bwSAdXvpn32XO5BqRujPkL1JGkp-u8lq-SpMRHsDm")  # Vendor/Integrator API Key
+METRC_USER_KEY = os.getenv("METRC_USER_KEY", "r94vrDWi2CVsT2qYERqGHHc2oMjb5rC5XsgvunC8tE7fUADa")  # User API Key
 METRC_LICENSE = os.getenv("METRC_LICENSE", "C11-0001638-LIC")
 METRC_BASE_URL = "https://api-ca.metrc.com"
 
@@ -36,19 +38,20 @@ def save_processed_transfers(data):
         json.dump(data, f, indent=2)
 
 
-def get_incoming_transfers(days_back=7):
-    """Fetch incoming transfers from METRC"""
+def get_incoming_transfers(hours_back=2):
+    """Fetch incoming transfers from METRC (max 24 hours per METRC limitation)"""
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Checking METRC for incoming transfers...")
     
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_back)
+    start_date = end_date - timedelta(hours=hours_back)
     
     # Use v2 endpoint (California has v2 per documentation)
     url = f"{METRC_BASE_URL}/transfers/v2/incoming"
     headers = {
         "Content-Type": "application/json"
     }
-    auth = (METRC_API_KEY, "")
+    # METRC requires Basic Auth with Integrator Key as username and User Key as password
+    auth = (METRC_INTEGRATOR_KEY, METRC_USER_KEY)
     params = {
         "licenseNumber": METRC_LICENSE,
         "lastModifiedStart": start_date.strftime("%Y-%m-%dT%H:%M:%S"),
