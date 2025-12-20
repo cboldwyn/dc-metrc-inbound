@@ -7,6 +7,9 @@ on:
   
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write  # Allow pushing commits
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -14,6 +17,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: true
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -36,15 +42,8 @@ jobs:
         python main.py
     
     - name: Commit tracking file
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        # Only commit if the tracking file exists
-        if [ -f processed_transfers.json ]; then
-          git add processed_transfers.json
-          git diff --staged --quiet || git commit -m "Update processed transfers [skip ci]"
-          git push
-        else
-          echo "No tracking file to commit (no transfers processed yet)"
-        fi
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: 'Update processed transfers [skip ci]'
+        file_pattern: 'processed_transfers.json'
+        skip_dirty_check: false
