@@ -327,6 +327,9 @@ def main():
     
     if not transfers:
         print("\n✓ No new transfers found")
+        # Save tracking file anyway to ensure it exists for git commit
+        tracking_data['last_run'] = datetime.now().isoformat()
+        save_processed_transfers(tracking_data)
         return
     
     # Process each transfer

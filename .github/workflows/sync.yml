@@ -2,8 +2,8 @@ name: METRC to Asana Sync
 
 on:
   schedule:
-    # Run every 15 minutes during business hours (8am-8pm Pacific)
-    - cron: '*/15 8-20 * * 1-5'  # Mon-Fri, 8am-8pm (adjust to your timezone)
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
   
   workflow_dispatch:  # Allow manual triggering
 
@@ -26,7 +26,8 @@ jobs:
     
     - name: Run sync
       env:
-        METRC_API_KEY: ${{ secrets.METRC_API_KEY }}
+        METRC_INTEGRATOR_KEY: ${{ secrets.METRC_INTEGRATOR_KEY }}
+        METRC_USER_KEY: ${{ secrets.METRC_USER_KEY }}
         METRC_LICENSE: ${{ secrets.METRC_LICENSE }}
         ASANA_PAT: ${{ secrets.ASANA_PAT }}
         ASANA_WORKSPACE_ID: ${{ secrets.ASANA_WORKSPACE_ID }}
@@ -38,6 +39,12 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add processed_transfers.json
-        git diff --staged --quiet || git commit -m "Update processed transfers [skip ci]"
-        git push
+        
+        # Only commit if the tracking file exists
+        if [ -f processed_transfers.json ]; then
+          git add processed_transfers.json
+          git diff --staged --quiet || git commit -m "Update processed transfers [skip ci]"
+          git push
+        else
+          echo "No tracking file to commit (no transfers processed yet)"
+        fi
