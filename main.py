@@ -42,7 +42,9 @@ def get_incoming_transfers(hours_back=2):
     """Fetch incoming transfers from METRC (max 24 hours per METRC limitation)"""
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Checking METRC for incoming transfers...")
     
-    end_date = datetime.now()
+    # Use UTC timezone to match METRC's timestamp format
+    from datetime import timezone
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(hours=hours_back)
     
     # Use v2 endpoint (California has v2 per documentation)
@@ -54,8 +56,9 @@ def get_incoming_transfers(hours_back=2):
     auth = (METRC_INTEGRATOR_KEY, METRC_USER_KEY)
     params = {
         "licenseNumber": METRC_LICENSE,
-        "lastModifiedStart": start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-        "lastModifiedEnd": end_date.strftime("%Y-%m-%dT%H:%M:%S")
+        # Format with timezone offset to match METRC's format (e.g., 2025-12-22T19:00:00+00:00)
+        "lastModifiedStart": start_date.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+        "lastModifiedEnd": end_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
     }
     
     # Debug logging
@@ -332,28 +335,47 @@ def main():
         save_processed_transfers(tracking_data)
         return
     
+    # Log all transfers found
+    print(f"\n📋 Found {len(transfers)} transfer(s) from METRC:")
+    for i, transfer in enumerate(transfers, 1):
+        transfer_id = transfer.get('Id', 'NO_ID')
+        manifest = transfer.get('ManifestNumber', 'NO_MANIFEST')
+        shipper = transfer.get('ShipperFacilityName', 'UNKNOWN')
+        print(f"  {i}. ID: {transfer_id} | Manifest: {manifest} | Shipper: {shipper}")
+    
     # Process each transfer
     new_count = 0
+    skipped_count = 0
     for transfer in transfers:
         transfer_id = transfer.get('Id')
         
         if not transfer_id:
+            print(f"\n⚠️  Skipping transfer with no ID")
             continue
         
         # Skip if already processed
         if transfer_id in processed_ids:
+            skipped_count += 1
+            print(f"\n⏭️  Skipping transfer {transfer_id} (already processed)")
             continue
         
-        print(f"\n📦 Processing new transfer ID: {transfer_id}")
+        print(f"\n📦 Processing NEW transfer ID: {transfer_id}")
+        print(f"   Manifest: {transfer.get('ManifestNumber', 'Unknown')}")
+        print(f"   Shipper: {transfer.get('ShipperFacilityName', 'Unknown')}")
         
         # Format and create task
         task_name, description = format_transfer_for_asana(transfer)
+        print(f"   Creating Asana task: '{task_name}'")
+        
         task = create_asana_task(task_name, description, ASANA_WORKSPACE_ID, ASANA_PROJECT_ID)
         
         if task:
             # Mark as processed
             processed_ids.add(transfer_id)
             new_count += 1
+            print(f"   ✅ Asana task created successfully!")
+        else:
+            print(f"   ❌ Failed to create Asana task")
     
     # Save updated tracking data
     tracking_data['transfer_ids'] = list(processed_ids)
@@ -362,6 +384,7 @@ def main():
     
     print(f"\n{'='*60}")
     print(f"✓ Processed {new_count} new transfer(s)")
+    print(f"⏭️  Skipped {skipped_count} already-processed transfer(s)")
     print(f"✓ Total tracked: {len(processed_ids)} transfers")
     print(f"{'='*60}\n")
 
