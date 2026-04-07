@@ -20,6 +20,22 @@ ASANA_PAT = os.getenv("ASANA_PAT", "2/1203280086662339/1212049949445851:025846d4
 ASANA_WORKSPACE_ID = os.getenv("ASANA_WORKSPACE_ID", "1168175464405652")
 ASANA_PROJECT_ID = os.getenv("ASANA_PROJECT_ID", "1207340952387632")
 
+# Shipper licenses to exclude (transfers from these won't create Asana tasks)
+EXCLUDED_LICENSES = [
+    "C10-0000633-LIC",
+    "C10-0000658-LIC",
+    "C10-0000668-LIC",
+    "C10-0000735-LIC",
+    "C10-0000082-LIC",
+    "C10-0000311-LIC",
+    "C10-0001120-LIC",
+    "C10-0001133-LIC",
+    "C10-0001264-LIC",
+    "C10-0001081-LIC",
+    "C10-0001591-LIC",
+    "C10-0001633-LIC",
+]
+
 # File to track processed transfers
 TRACKING_FILE = "processed_transfers.json"
 
@@ -352,7 +368,14 @@ def main():
         if not transfer_id:
             print(f"\n⚠️  Skipping transfer with no ID")
             continue
-        
+
+        # Skip excluded licenses
+        shipper_license = transfer.get('ShipperFacilityLicenseNumber', '')
+        if shipper_license in EXCLUDED_LICENSES:
+            skipped_count += 1
+            print(f"\n⏭️  Skipping transfer {transfer_id} (excluded license: {shipper_license})")
+            continue
+
         # Skip if already processed
         if transfer_id in processed_ids:
             skipped_count += 1
